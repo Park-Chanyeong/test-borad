@@ -6,9 +6,10 @@ import com.example.demo.entity.User;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,11 +18,19 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
-    public List<Post> findAll() {
-        return postRepository.findAll();
+    public Page<Post> findAllPaged(int page, int size) {
+        return postRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size));
     }
 
+    @Transactional
     public Post findById(Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found: " + id));
+        post.setViewCount(post.getViewCount() + 1);
+        return post;
+    }
+
+    public Post findByIdInternal(Long id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found: " + id));
     }
@@ -39,7 +48,7 @@ public class PostService {
     }
 
     public Post update(Long id, PostDto dto) {
-        Post post = findById(id);
+        Post post = findByIdInternal(id);
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
         return postRepository.save(post);

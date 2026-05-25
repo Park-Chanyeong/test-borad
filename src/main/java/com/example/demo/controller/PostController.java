@@ -10,14 +10,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @Tag(name = "Posts", description = "게시글 CRUD API")
 @RestController
@@ -27,11 +26,13 @@ public class PostController {
 
     private final PostService postService;
 
-    @Operation(summary = "게시글 목록 조회", description = "전체 게시글 목록을 반환합니다. 인증 불필요.")
+    @Operation(summary = "게시글 목록 조회", description = "전체 게시글 목록을 페이지 단위로 반환합니다. 인증 불필요.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping
-    public List<Post> getAll() {
-        return postService.findAll();
+    public Page<Post> getAll(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "10") @RequestParam(defaultValue = "10") int size) {
+        return postService.findAllPaged(page, size);
     }
 
     @Operation(summary = "게시글 단건 조회", description = "ID로 특정 게시글을 조회합니다. 인증 불필요.")
@@ -69,7 +70,7 @@ public class PostController {
             @Parameter(description = "게시글 ID", example = "1") @PathVariable Long id,
             @RequestBody PostDto dto,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Post post = postService.findById(id);
+        Post post = postService.findByIdInternal(id);
         checkOwnership(post, userDetails.getUsername());
         return postService.update(id, dto);
     }
@@ -84,7 +85,7 @@ public class PostController {
     public ResponseEntity<Void> delete(
             @Parameter(description = "게시글 ID", example = "1") @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Post post = postService.findById(id);
+        Post post = postService.findByIdInternal(id);
         checkOwnership(post, userDetails.getUsername());
         postService.delete(id);
         return ResponseEntity.noContent().build();
