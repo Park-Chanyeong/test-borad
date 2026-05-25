@@ -1,7 +1,11 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.CommentDto;
 import com.example.demo.dto.PostDto;
+import com.example.demo.entity.Comment;
 import com.example.demo.entity.Post;
+import com.example.demo.service.CommentService;
+import com.example.demo.service.PostLikeService;
 import com.example.demo.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class PostViewController {
 
     private final PostService postService;
+    private final CommentService commentService;
+    private final PostLikeService postLikeService;
 
     @GetMapping
     public String list(
@@ -28,8 +34,15 @@ public class PostViewController {
     }
 
     @GetMapping("/{id}")
-    public String detail(@PathVariable Long id, Model model) {
+    public String detail(@PathVariable Long id, Model model, Authentication authentication) {
         model.addAttribute("post", postService.findById(id));
+        model.addAttribute("comments", commentService.findByPostId(id));
+        model.addAttribute("commentDto", new CommentDto());
+
+        String username = authentication != null && authentication.isAuthenticated()
+                ? authentication.getName() : null;
+        model.addAttribute("likeCount", postLikeService.countByPostId(id));
+        model.addAttribute("hasLiked", postLikeService.hasLiked(id, username));
         return "posts/detail";
     }
 
@@ -70,6 +83,36 @@ public class PostViewController {
         checkOwnership(post, authentication);
         postService.delete(id);
         return "redirect:/web/posts";
+    }
+
+    @PostMapping("/{id}/comments")
+    public String addComment(@PathVariable Long id, @ModelAttribute CommentDto dto, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/web/login";
+        }
+        commentService.create(id, dto, authentication.getName());
+        return "redirect:/web/posts/" + id + "#comments";
+    }
+
+    @PostMapping("/{id}/comments/{commentId}/delete")
+    public String deleteComment(@PathVariable Long id, @PathVariable Long commentId, Authentication authentication) {
+        Comment comment = commentService.findById(commentId);
+        if (authentication == null || !authentication.isAuthenticated()
+                || comment.getAuthorUsername() == null
+                || !comment.getAuthorUsername().equals(authentication.getName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한이 없습니다.");
+        }
+        commentService.delete(commentId);
+        return "redirect:/web/posts/" + id + "#comments";
+    }
+
+    @PostMapping("/{id}/like")
+    public String toggleLike(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/web/login";
+        }
+        postLikeService.toggle(id, authentication.getName());
+        return "redirect:/web/posts/" + id;
     }
 
     private void checkOwnership(Post post, Authentication auth) {
