@@ -4,10 +4,11 @@ import com.example.demo.dto.CommentDto;
 import com.example.demo.entity.Comment;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.User;
+import com.example.demo.exception.EntityNotFoundException;
 import com.example.demo.repository.CommentRepository;
-import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,25 +19,23 @@ import java.util.List;
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final PostRepository postRepository;
+    private final PostService postService;
     private final UserRepository userRepository;
 
     public List<Comment> findByPostId(Long postId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found: " + postId));
+        Post post = postService.findByIdInternal(postId);
         return commentRepository.findAllByPostOrderByCreatedAtAsc(post);
     }
 
     public Comment findById(Long id) {
         return commentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Comment not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다: " + id));
     }
 
     public Comment create(Long postId, CommentDto dto, String username) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found: " + postId));
+        Post post = postService.findByIdInternal(postId);
         User author = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + username));
         Comment comment = new Comment();
         comment.setPost(post);
         comment.setAuthor(author);
@@ -45,7 +44,11 @@ public class CommentService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, String username) {
+        Comment comment = findById(id);
+        if (comment.getAuthorUsername() == null || !comment.getAuthorUsername().equals(username)) {
+            throw new AccessDeniedException("권한이 없습니다.");
+        }
         commentRepository.deleteById(id);
     }
 }

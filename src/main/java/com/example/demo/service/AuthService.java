@@ -5,11 +5,14 @@ import com.example.demo.dto.RegisterDto;
 import com.example.demo.dto.TokenDto;
 import com.example.demo.entity.RefreshToken;
 import com.example.demo.entity.User;
+import com.example.demo.exception.DuplicateException;
+import com.example.demo.exception.EntityNotFoundException;
 import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +33,7 @@ public class AuthService {
 
     public void register(RegisterDto dto) {
         if (userRepository.existsByUsername(dto.getUsername())) {
-            throw new RuntimeException("이미 존재하는 사용자입니다.");
+            throw new DuplicateException("이미 존재하는 사용자입니다: " + dto.getUsername());
         }
         User user = new User();
         user.setUsername(dto.getUsername());
@@ -41,10 +44,10 @@ public class AuthService {
     @Transactional
     public TokenDto login(LoginDto dto) {
         User user = userRepository.findByUsername(dto.getUsername())
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new EntityNotFoundException("존재하지 않는 사용자입니다."));
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            throw new AccessDeniedException("비밀번호가 일치하지 않습니다.");
         }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
@@ -63,11 +66,11 @@ public class AuthService {
 
     public TokenDto refresh(String refreshTokenValue) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(refreshTokenValue)
-                .orElseThrow(() -> new RuntimeException("유효하지 않은 Refresh Token입니다."));
+                .orElseThrow(() -> new AccessDeniedException("유효하지 않은 Refresh Token입니다."));
 
         if (refreshToken.getExpiryDate().isBefore(Instant.now())) {
             refreshTokenRepository.delete(refreshToken);
-            throw new RuntimeException("Refresh Token이 만료되었습니다.");
+            throw new AccessDeniedException("Refresh Token이 만료되었습니다.");
         }
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(refreshToken.getUser().getUsername());
