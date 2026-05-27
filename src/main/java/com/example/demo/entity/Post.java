@@ -22,7 +22,7 @@ public class Post extends BaseTimeEntity {
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id")
+    @JoinColumn(name = "author_id") // DB에 author_id 컬럼 생성 (FK)
     @JsonIgnore
     private User author;
 

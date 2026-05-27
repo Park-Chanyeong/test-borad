@@ -17,7 +17,7 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @OneToOne // 한유저가 한 리프레시 토큰 1:1
     @JoinColumn(name = "user_id")
     private User user;
 

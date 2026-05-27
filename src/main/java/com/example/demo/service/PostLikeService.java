@@ -18,6 +18,7 @@ public class PostLikeService {
     private final PostService postService;
     private final UserRepository userRepository;
 
+    //좋아요 누르면 추가, 이미 눌렀으면 취소 (토글)
     @Transactional
     public boolean toggle(Long postId, String username) {
         Post post = postService.findByIdInternal(postId);
@@ -35,12 +36,12 @@ public class PostLikeService {
             return true;
         }
     }
-
+    // 게시글 좋아요 수 조회
     public long countByPostId(Long postId) {
         Post post = postService.findByIdInternal(postId);
         return postLikeRepository.countByPost(post);
     }
-
+    // 현재 유저가 이미 눌렀는지 확인
     public boolean hasLiked(Long postId, String username) {
         if (username == null) return false;
         Post post = postService.findByIdInternal(postId);

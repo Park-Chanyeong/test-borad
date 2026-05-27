@@ -15,6 +15,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        //  username의 유저 정보 줘
+        // JwtAuthenticationFilter에서도 토큰에서 username 꺼낸 뒤 여기서 유저를 조회 (db)
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }

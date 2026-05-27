@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.PostDto;
-import com.example.demo.entity.Post;
+import com.example.demo.dto.response.PostResponse;
 import com.example.demo.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,10 +25,10 @@ public class PostController {
 
     private final PostService postService;
 
-    @Operation(summary = "게시글 목록 조회", description = "전체 게시글 목록을 페이지 단위로 반환합니다. 인증 불필요.")
+    @Operation(summary = "게시글 목록 조회", description = "전체 게시글 목록을 페이지 단위로 반환")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping
-    public Page<Post> getAll(
+    public Page<PostResponse> getAll(
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "10") @RequestParam(defaultValue = "10") int size) {
         return postService.findAllPaged(page, size);
@@ -39,19 +40,22 @@ public class PostController {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 게시글")
     })
     @GetMapping("/{id}")
-    public Post getOne(@Parameter(description = "게시글 ID", example = "1") @PathVariable Long id) {
+    public PostResponse getOne(@Parameter(description = "게시글 ID", example = "1") @PathVariable Long id) {
         return postService.findById(id);
     }
 
     @Operation(summary = "게시글 작성", description = "새 게시글을 작성합니다. JWT 인증 필요.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "작성 성공"),
+            @ApiResponse(responseCode = "201", description = "작성 성공"),
             @ApiResponse(responseCode = "401", description = "인증 실패")
     })
     @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping
-    public Post create(@RequestBody PostDto dto, @AuthenticationPrincipal UserDetails userDetails) {
-        return postService.create(dto, userDetails.getUsername());
+    public ResponseEntity<PostResponse> create(
+            @RequestBody PostDto dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        PostResponse response = postService.create(dto, userDetails.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "게시글 수정", description = "게시글을 수정합니다. JWT 인증 필요, 작성자 본인만 가능.")
@@ -62,7 +66,7 @@ public class PostController {
     })
     @SecurityRequirement(name = "Bearer Authentication")
     @PutMapping("/{id}")
-    public Post update(
+    public PostResponse update(
             @Parameter(description = "게시글 ID", example = "1") @PathVariable Long id,
             @RequestBody PostDto dto,
             @AuthenticationPrincipal UserDetails userDetails) {

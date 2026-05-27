@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.RegisterDto;
+import com.example.demo.exception.DuplicateException;
 import com.example.demo.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -37,7 +38,7 @@ public class AuthWebController {
         try {
             authService.register(dto);
             return "redirect:/web/login?registered";
-        } catch (Exception e) {
+        } catch (DuplicateException e) {
             model.addAttribute("error", "이미 존재하는 사용자입니다.");
             model.addAttribute("dto", dto);
             return "auth/register";

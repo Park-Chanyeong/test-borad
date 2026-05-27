@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.PostDto;
+import com.example.demo.dto.response.PostResponse;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.User;
 import com.example.demo.exception.EntityNotFoundException;
@@ -20,15 +21,16 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
-    public Page<Post> findAllPaged(int page, int size) {
-        return postRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size));
+    public Page<PostResponse> findAllPaged(int page, int size) {
+        return postRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size))
+                .map(PostResponse::from);
     }
 
     @Transactional
-    public Post findById(Long id) {
+    public PostResponse findById(Long id) {
         Post post = findByIdInternal(id);
         post.setViewCount(post.getViewCount() + 1);
-        return post;
+        return PostResponse.from(post);
     }
 
     public Post findByIdInternal(Long id) {
@@ -36,7 +38,7 @@ public class PostService {
                 .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다: " + id));
     }
 
-    public Post create(PostDto dto, String username) {
+    public PostResponse create(PostDto dto, String username) {
         Post post = new Post();
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
@@ -45,15 +47,15 @@ public class PostService {
                     .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + username));
             post.setAuthor(author);
         }
-        return postRepository.save(post);
+        return PostResponse.from(postRepository.save(post));
     }
 
-    public Post update(Long id, PostDto dto, String username) {
+    public PostResponse update(Long id, PostDto dto, String username) {
         Post post = findByIdInternal(id);
         verifyAuthor(post, username);
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
-        return postRepository.save(post);
+        return PostResponse.from(postRepository.save(post));
     }
 
     public void delete(Long id, String username) {
